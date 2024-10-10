@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+set -e
+run() {
+  # ==> download webview 119 from apkmirror manually
+  # https://www.apkmirror.com/apk/google-inc/android-system-webview/android-system-webview-119-0-6045-194-release/android-system-webview-119-0-6045-194-8-android-apk-download/download/?key=ebd657a8e950a77ce40dd2088b6539f5cb180d8a&forcebaseapk=true
+  # https://www.apkmirror.com/apk/google-inc/android-system-webview/android-system-webview-119-0-6045-194-release/android-system-webview-119-0-6045-194-android-apk-download/download/?key=2d7e42008a27863e8c093ea68e3864e106c53621&forcebaseapk=true
+
+  local arch=$1
+
+  case $arch in
+  arm64-v8a | armeabi-v7a)
+    src='com.google.android.webview_119.0.6045.194-604519401_minAPI24_maxAPI28(arm64-v8a,armeabi-v7a)(nodpi)_apkmirror.com.apk'
+    ;;
+  x86_64 | x86)
+    src='com.google.android.webview_119.0.6045.194-604519407_minAPI24_maxAPI28(x86,x86_64)(nodpi)_apkmirror.com.apk'
+    ;;
+  esac
+
+  rm -rf tmp tmp.apk
+  cp "$src" tmp.apk
+  apktool d tmp.apk --no-res --no-src
+  fd . tmp/lib -d1 -E $arch -x rm -rf
+
+  apktool b tmp --no-res --no-src
+  export PATH="$HOME/Android/Sdk/build-tools/34.0.0/:$PATH"
+  zipalign -p -f -v 4 tmp/dist/tmp.apk tmp.apk
+  apksigner sign --ks ./webview.jks --ks-pass pass:webview tmp.apk
+
+  mv tmp.apk com.google.android.webview_119_$arch.apk
+
+  # local branch=119_$arch
+  # git branch -D $branch
+  # git checkout --orphan $branch
+  # git reset --mixed
+  # rm -rf .gitattributes
+  # git lfs install
+  # git lfs track '*.apk'
+  # git add .gitattributes
+  # git add webview.apk
+  # git commit -m init
+  # git push origin $branch -u --force-with-lease
+}
+
+run_all() {
+  for arch in x86_64 x86 arm64-v8a armeabi-v7a; do
+    # for arch in arm64-v8a armeabi-v7a; do
+    run $arch
+  done
+}
+
+"$@"
